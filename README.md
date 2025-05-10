@@ -1,70 +1,182 @@
-# Getting Started with Create React App
+# Dokumentasi Project Penjadwalan-App
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## Tujuan Project
 
-## Available Scripts
+Aplikasi ini membantu pengguna mengelola dan menjadwalkan aktivitas secara efisien melalui antarmuka web interaktif berbasis React.
 
-In the project directory, you can run:
+## Fitur Utama
 
-### `npm start`
+- **Dashboard**: Menampilkan ringkasan jumlah kegiatan, jumlah kegiatan di hari libur nasional (menggunakan API eksternal), dan tabel ringkasan jadwal.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+  Contoh kode utama:
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+  ```jsx
+  // src/pages/Dashboard.js
+  import React, { useEffect, useState } from "react";
+  import axios from "axios";
+  function Dashboard() {
+    const [jadwal, setJadwal] = useState([]);
+    const [liburDates, setLiburDates] = useState([]);
+    useEffect(() => {
+      // Ambil jadwal dari localStorage
+      const data = localStorage.getItem("jadwalList");
+      if (data) {
+        setJadwal(JSON.parse(data));
+      }
+      // Ambil data libur nasional
+      axios.get("https://api-harilibur.vercel.app/api").then((res) => {
+        const dates = res.data.map((item) => item.holiday_date);
+        setLiburDates(dates);
+      });
+    }, []);
+    const totalKegiatan = jadwal.length;
+    const totalHariLibur = jadwal.filter((j) =>
+      liburDates.includes(j.tanggal)
+    ).length;
+    // ...rendering komponen
+  }
+  ```
 
-### `npm test`
+- **Manajemen Jadwal**: Tambah, edit, hapus, dan lihat daftar jadwal. Data tersimpan di localStorage. Terdapat deteksi otomatis apakah tanggal kegiatan bertepatan dengan hari libur nasional (API harilibur).
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+  Contoh kode utama:
 
-### `npm run build`
+  ```jsx
+  // src/pages/Jadwal.js
+  import React, { useState, useEffect } from "react";
+  import axios from "axios";
+  function Jadwal() {
+    const [jadwalList, setJadwalList] = useState([]);
+    const [kegiatan, setKegiatan] = useState("");
+    const [tanggal, setTanggal] = useState("");
+    const [isLibur, setIsLibur] = useState(false);
+    const [editIndex, setEditIndex] = useState(null);
+    useEffect(() => {
+      const savedJadwal = localStorage.getItem("jadwalList");
+      if (savedJadwal) {
+        setJadwalList(JSON.parse(savedJadwal));
+      }
+    }, []);
+    useEffect(() => {
+      localStorage.setItem("jadwalList", JSON.stringify(jadwalList));
+    }, [jadwalList]);
+    useEffect(() => {
+      if (tanggal) {
+        axios.get("https://api-harilibur.vercel.app/api").then((res) => {
+          const libur = res.data.some((item) => item.holiday_date === tanggal);
+          setIsLibur(libur);
+        });
+      }
+    }, [tanggal]);
+    // ...fungsi tambah, edit, hapus, dan rendering komponen
+  }
+  ```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+- **Navigasi Mudah**: Navbar untuk akses cepat ke Home, Dashboard, Jadwal, About, dan Contact.
+- **Halaman Informasi**: About (tentang aplikasi dan tim), Contact (formulir pesan, data tersimpan di localStorage).
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+  Contoh kode penyimpanan pesan kontak:
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+  ```jsx
+  // src/pages/Contact.js
+  function Contact() {
+    const [formData, setFormData] = useState({
+      nama: "",
+      email: "",
+      pesan: "",
+    });
+    const handleChange = (e) =>
+      setFormData({ ...formData, [e.target.name]: e.target.value });
+    const handleSubmit = (e) => {
+      e.preventDefault();
+      const existingMessages =
+        JSON.parse(localStorage.getItem("contactMessages")) || [];
+      const updatedMessages = [...existingMessages, formData];
+      localStorage.setItem("contactMessages", JSON.stringify(updatedMessages));
+      alert("Pesan terkirim!");
+      setFormData({ nama: "", email: "", pesan: "" });
+    };
+    // ...rendering form
+  }
+  ```
 
-### `npm run eject`
+- **Styling Responsive**: Tampilan konsisten dan modern dengan CSS custom.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## Struktur Folder Project
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+```
+penjadwalan-app/
+├── public/           # Berkas statis (favicon, index.html, logo, manifest, robots)
+├── src/
+│   ├── components/
+│   │   └── Navbar.js # Komponen navigasi utama
+│   ├── pages/
+│   │   ├── Home.js      # Halaman utama
+│   │   ├── Dashboard.js # Ringkasan jadwal & statistik
+│   │   ├── Jadwal.js    # CRUD jadwal
+│   │   ├── About.js     # Tentang aplikasi
+│   │   └── Contact.js   # Formulir kontak
+│   ├── styles/
+│   │   └── index.css    # Styling global
+│   ├── App.js           # Root komponen React (routing)
+│   ├── App.css          # Styling tambahan bawaan React
+│   ├── App.test.js      # Unit test bawaan
+│   ├── index.js         # Entry point aplikasi
+│   ├── logo.svg         # Logo React
+│   ├── reportWebVitals.js # Monitoring performa
+│   └── setupTests.js    # Setup testing
+├── package.json         # Konfigurasi & dependensi
+├── package-lock.json    # Lockfile npm
+├── README.md            # Dokumentasi teknis default
+└── PRESENTASI.md        # Dokumentasi & pedoman presentasi (file ini)
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+## Penjelasan Halaman & Fungsi Penting
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+- **src/App.js**
+  - Mengatur routing utama aplikasi menggunakan react-router-dom.
+  - Menampilkan Navbar di semua halaman.
+  - Routing ke Home, About, Jadwal, Contact, Dashboard.
+- **src/components/Navbar.js**
+  - Navigasi utama, akses ke semua halaman.
+- **src/pages/Home.js**
+  - Halaman sambutan dan penjelasan singkat aplikasi.
+- **src/pages/Dashboard.js**
+  - Mengambil data jadwal dari localStorage.
+  - Mengambil data hari libur nasional dari API eksternal.
+  - Menampilkan total kegiatan, jumlah kegiatan di hari libur, dan tabel ringkasan jadwal.
+- **src/pages/Jadwal.js**
+  - CRUD jadwal: tambah, edit, hapus, lihat daftar.
+  - Data jadwal tersimpan di localStorage.
+  - Deteksi otomatis apakah tanggal kegiatan adalah hari libur nasional (API harilibur).
+- **src/pages/About.js**
+  - Informasi tentang aplikasi dan tim pengembang.
+- **src/pages/Contact.js**
+  - Formulir kontak (nama, email, pesan), data pesan disimpan di localStorage.
+- **src/styles/index.css**
+  - Styling global: layout responsif, styling navbar, form, dan tabel.
+- **src/App.css**
+  - Styling tambahan bawaan React (tidak wajib diubah).
+- **src/App.test.js, setupTests.js, reportWebVitals.js**
+  - Berkas pendukung testing dan monitoring performa (bawaan Create React App).
 
-## Learn More
+## Dependensi Utama (Sesuai package.json)
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+- **react**: Library utama UI.
+- **react-dom**: Rendering React ke DOM.
+- **react-router-dom**: Routing antar halaman.
+- **axios**: HTTP client untuk fetch API hari libur nasional.
+- **react-scripts**: Scripts bawaan Create React App.
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## Cara Menjalankan Project
 
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+1. **Install Dependensi**
+   ```
+   npm install
+   ```
+2. **Jalankan Development Server**
+   ```
+   npm start
+   ```
+3. **Akses Aplikasi**
+   Buka browser dan kunjungi [http://localhost:3000](http://localhost:3000)

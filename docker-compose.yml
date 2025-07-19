@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  # MySQL Database for Backend Testing
+  db:
+    image: mysql:8.0
+    container_name: ${COMPOSE_PROJECT_NAME:-penjadwalan-app}_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-}
+      MYSQL_ALLOW_EMPTY_PASSWORD: ${MYSQL_ALLOW_EMPTY_PASSWORD:-1}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-penjadwalan_db}
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backend/database.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      timeout: 20s
+      retries: 10
+    networks:
+      - app_network
+
+  # PHP Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ${COMPOSE_PROJECT_NAME:-penjadwalan-app}_backend
+    restart: always
+    ports:
+      - "${BACKEND_PORT:-8080}:80"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: ${DB_HOST:-db}
+      DB_NAME: ${DB_NAME:-penjadwalan_db}
+      DB_USER: ${DB_USER:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-}
+      DB_PORT: ${DB_PORT:-3306}
+      APP_DEBUG: ${APP_DEBUG:-true}
+      APP_TIMEZONE: ${APP_TIMEZONE:-Asia/Jakarta}
+      HOLIDAY_API_URL: ${HOLIDAY_API_URL:-https://api-harilibur.vercel.app/api}
+      HOLIDAY_API_TIMEOUT: ${HOLIDAY_API_TIMEOUT:-5000}
+    networks:
+      - app_network
+
+  # phpMyAdmin (Optional)
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: ${COMPOSE_PROJECT_NAME:-penjadwalan-app}_phpmyadmin
+    restart: always
+    ports:
+      - "${PHPMYADMIN_PORT:-8081}:80"
+    environment:
+      PMA_HOST: db
+      PMA_USER: ${DB_USER:-root}
+      PMA_PASSWORD: ${DB_PASSWORD:-}
+    depends_on:
+      - db
+    networks:
+      - app_network
+    profiles:
+      - tools
+
+  # Frontend React App
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ${COMPOSE_PROJECT_NAME:-penjadwalan-app}_frontend
+    restart: always
+    ports:
+      - "3000:80"
+    environment:
+      - REACT_APP_API_BASE_URL=http://localhost:8080/api
+    depends_on:
+      - backend
+    networks:
+      - app_network
+
+volumes:
+  mysql_data:
+
+
+networks:
+  app_network:
+    driver: bridge
